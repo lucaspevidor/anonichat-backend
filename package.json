@@ -1,0 +1,28 @@
+{
+  "name": "web-chat",
+  "version": "1.0.0",
+  "main": "src/server.ts",
+  "author": "Lucas Pevidor",
+  "license": "GPL-V3",
+  "scripts": {
+    "dev": "nodemon --watch /src/** --exec ts-node src/server.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.18",
+    "@types/node": "^20.8.2",
+    "@typescript-eslint/eslint-plugin": "^6.4.0",
+    "eslint": "^8.0.1",
+    "eslint-config-standard-with-typescript": "^39.1.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
+    "eslint-plugin-promise": "^6.0.0",
+    "nodemon": "^3.0.1",
+    "prisma": "^5.4.0",
+    "ts-node": "^10.9.1",
+    "typescript": "*"
+  }
+}
