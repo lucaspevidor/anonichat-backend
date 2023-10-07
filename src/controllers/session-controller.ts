@@ -16,7 +16,14 @@ class SessionController {
     if (!username || !password) { return res.status(400).json({ error: "Missing username or password" }); }
 
     try {
-      const user = await db.user.findFirst({ where: { username } });
+      const user = await db.user.findFirst({
+        where: { username },
+        include: {
+          rooms: true,
+          ownedRooms: true,
+          messages: true
+        }
+      });
       if (!user) { return res.status(404).json({ error: "User not found" }); }
 
       const validPwd = await bcrypt.compare(password, user.pwd_hash);
@@ -26,7 +33,8 @@ class SessionController {
       const { pwd_hash, ...userWithoutPwd } = user;
       const token = jwt.sign({ user: userWithoutPwd }, auth.secret, auth.options);
 
-      res.cookie("jwt", token, { httpOnly: true });
+      res.cookie("jwt", token, { maxAge: 604800000, sameSite: "lax" });
+      res.setHeader("Access-Control-Expose-Headers", "Set-Cookie");
 
       return res.json({ user: userWithoutPwd, token });
     } catch (error) {

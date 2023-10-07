@@ -33,14 +33,20 @@ model Room {
   members       User[]    @relation("members", fields: [memberIDs], references: [id])
   memberIDs     String[]  @db.ObjectId
 
-  owner         User      @relation("owner", fields: [ownerId], references: [id])
+  owner         User      @relation("owner", fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId       String    @db.ObjectId
+
+  messages      Message[]
 }
 
 model Message {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  sender        User      @relation(fields: [senderName], references: [username])
+  sender        User      @relation(fields: [senderName], references: [username], onDelete: Cascade)
   senderName    String
   content       String
+
+  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId        String    @db.ObjectId
+
   createdAt     DateTime  @default(now())
 }
