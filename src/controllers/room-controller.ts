@@ -1,5 +1,6 @@
 import { type Request, type Response } from "express";
 import { db } from "../services/db";
+import { io } from "../socket";
 
 interface IRoomUpdate {
   name?: string
@@ -7,7 +8,7 @@ interface IRoomUpdate {
 }
 
 class RoomController {
-  async create (req: Request, res: Response) {
+  async create(req: Request, res: Response) {
     try {
       const userId = req.user.id;
       const roomName = req.params.name;
@@ -27,6 +28,7 @@ class RoomController {
 
       await db.user.update({ where: { id: user.id }, data: { roomIDs: [...user.roomIDs, room.id] } });
 
+      io.to(userId).emit("room-created", room);
       return res.status(201).json(room);
     } catch (error) {
       console.error(error);
@@ -34,7 +36,7 @@ class RoomController {
     }
   }
 
-  async update (req: Request<any, any, IRoomUpdate>, res: Response) {
+  async update(req: Request<any, any, IRoomUpdate>, res: Response) {
     try {
       const { roomId } = req.params;
       const { name, memberIDs } = req.body;
@@ -67,7 +69,7 @@ class RoomController {
     }
   }
 
-  async index (req: Request, res: Response) {
+  async index(req: Request, res: Response) {
     const { id: userId } = req.user;
 
     try {
@@ -82,7 +84,34 @@ class RoomController {
     }
   }
 
-  async delete (req: Request, res: Response) {
+  async load(req: Request, res: Response) {
+    const { id: userId } = req.user;
+
+    try {
+      const user = await db.user.findUnique({ where: { id: userId } });
+      if (!user) return res.status(401).json({ error: "User not found" });
+
+      const roomsWithMessages = await db.room.findMany({
+        where: {
+          id: {
+            in: user.roomIDs
+          }
+        },
+        include: {
+          messages: {
+            take: 20
+          }
+        }
+      });
+
+      return res.json(roomsWithMessages);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
     const { id } = req.user;
     const { roomId } = req.params;
 

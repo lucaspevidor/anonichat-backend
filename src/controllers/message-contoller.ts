@@ -1,12 +1,13 @@
 import { type Request, type Response } from "express";
 import { db } from "../services/db";
+import { io } from "../socket";
 
 interface IMessageCreate {
   content: string
 }
 
 class MessageController {
-  async create (req: Request<any, any, IMessageCreate>, res: Response) {
+  async create(req: Request<any, any, IMessageCreate>, res: Response) {
     const { id, username } = req.user;
     const { content } = req.body;
     const { roomId } = req.params;
@@ -25,6 +26,7 @@ class MessageController {
         }
       });
 
+      io.to(room.id).emit("new-message", message);
       return res.json(message);
     } catch (error) {
       console.error(error);
@@ -32,7 +34,7 @@ class MessageController {
     }
   }
 
-  async index (req: Request, res: Response) {
+  async index(req: Request, res: Response) {
     const { id } = req.user;
     const { roomId } = req.params;
     // Todo pagination

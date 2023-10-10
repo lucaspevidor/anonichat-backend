@@ -20,6 +20,8 @@ app.use(Auth);
 
 app.delete("/user", C.UserController.delete);
 
+app.get("/load", C.RoomController.load);
+
 app.get("/room/list", C.RoomController.index);
 app.post("/room/:name", C.RoomController.create);
 app.put("/room/:roomId", C.RoomController.update);
