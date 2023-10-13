@@ -10,19 +10,14 @@ interface ISessionCreateReq {
 }
 
 class SessionController {
-  async create (req: Request<any, ISessionCreateReq>, res: Response) {
+  async create(req: Request<any, ISessionCreateReq>, res: Response) {
     const { username, password } = req.body;
 
     if (!username || !password) { return res.status(400).json({ error: "Missing username or password" }); }
 
     try {
       const user = await db.user.findFirst({
-        where: { username },
-        include: {
-          rooms: true,
-          ownedRooms: true,
-          messages: true
-        }
+        where: { username }
       });
       if (!user) { return res.status(404).json({ error: "User not found" }); }
 

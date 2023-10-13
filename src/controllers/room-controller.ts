@@ -4,7 +4,6 @@ import { io } from "../socket";
 
 interface IRoomUpdate {
   name?: string
-  memberIDs?: string[]
 }
 
 class RoomController {
@@ -23,10 +22,14 @@ class RoomController {
           name: roomName,
           memberIDs: [userId],
           ownerId: userId
-        }
+        },
+        include: { messages: { take: 10 } }
       });
 
-      await db.user.update({ where: { id: user.id }, data: { roomIDs: [...user.roomIDs, room.id] } });
+      await db.user.update({
+        where: { id: user.id },
+        data: { roomIDs: [...user.roomIDs, room.id] }
+      });
 
       io.to(userId).emit("room-created", room);
       return res.status(201).json(room);
@@ -39,32 +42,85 @@ class RoomController {
   async update(req: Request<any, any, IRoomUpdate>, res: Response) {
     try {
       const { roomId } = req.params;
-      const { name, memberIDs } = req.body;
+      const { name } = req.body;
 
       if (!roomId) return res.status(400).json({ error: "Missing room ID" });
-      if (!name && !memberIDs) return res.status(400).json({ error: "Missing room name and member IDs" });
+      if (!name) return res.status(400).json({ error: "Missing room name" });
 
       const room = await db.room.findUnique({ where: { id: roomId } });
       if (!room) return res.status(400).json({ error: "Room not found" });
       if (room.ownerId !== req.user.id) return res.status(401).json({ error: "Unauthorized" });
 
-      if (memberIDs && !memberIDs.includes(req.user.id)) {
-        return res.status(400).json({ error: "Owner not included in member list" });
-      }
+      const updatedRoom = await db.room.update({
+        where: { id: roomId },
+        data: {
+          name
+        }
+      });
 
-      // Todo - add user checking
+      io.to(roomId).emit("name-changed", updatedRoom);
+      return res.json(updatedRoom);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  async addUser(req: Request, res: Response) {
+    try {
+      const { roomId, userId } = req.params;
+
+      if (!roomId) return res.status(400).json({ error: "Missing room ID" });
+      if (!userId) return res.status(400).json({ error: "Missing user ID" });
+
+      const room = await db.room.findUnique({ where: { id: roomId } });
+      if (!room) return res.status(400).json({ error: "Room not found" });
+      if (room.ownerId !== req.user.id) return res.status(401).json({ error: "Unauthorized" });
+      if (room.memberIDs.includes(userId)) return res.status(400).json({ error: "User is already a member of the channel" });
+
+      const user = await db.user.findUnique({ where: { id: userId } });
+      if (!user) return res.status(400).json({ error: "User does not exist" });
 
       const updatedRoom = await db.room.update({
         where: { id: roomId },
         data: {
-          name,
-          memberIDs
+          memberIDs: [...room.memberIDs, userId]
         }
       });
 
+      io.to(userId).emit("room-inserted", updatedRoom);
+      io.to(roomId).emit("user-added", userId, updatedRoom);
       return res.json(updatedRoom);
     } catch (error) {
-      console.error(error);
+      console.log(error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  async removeUser(req: Request, res: Response) {
+    try {
+      const { roomId, userId } = req.params;
+
+      if (!roomId) return res.status(400).json({ error: "Missing room ID" });
+      if (!userId) return res.status(400).json({ error: "Missing user ID" });
+
+      const room = await db.room.findUnique({ where: { id: roomId } });
+      if (!room) return res.status(400).json({ error: "Room not found" });
+      if (room.ownerId !== req.user.id) return res.status(401).json({ error: "Unauthorized" });
+      if (!room.memberIDs.includes(userId)) return res.status(400).json({ error: "User is not a member of the channel" });
+      if (room.ownerId === userId) return res.status(400).json({ error: "The owner of the room cannot be removed" });
+
+      const updatedRoom = await db.room.update({
+        where: { id: roomId },
+        data: {
+          memberIDs: room.memberIDs.filter(m => m !== userId)
+        }
+      });
+
+      io.to(roomId).emit("user-removed", userId, updatedRoom);
+      return res.json(updatedRoom);
+    } catch (error) {
+      console.log(error);
       return res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -139,6 +195,7 @@ class RoomController {
 
       const deleted = await db.room.delete({ where: { id: roomId } });
 
+      io.to(roomId).emit("room-deleted", deleted);
       return res.status(200).json(deleted);
     } catch (error) {
       console.error(error);

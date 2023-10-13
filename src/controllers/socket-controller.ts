@@ -41,6 +41,10 @@ async function SubToRooms(
     user.roomIDs.forEach(rId => {
       socket.join(rId)?.catch(error => { throw new Error(error); });
     });
+
+    socket.on("room-inserted", (room) => {
+      socket.join(room.id)?.catch(error => { throw new Error(error); });
+    });
     console.log(`User ${id} is subbed to rooms`);
   } catch (error) {
     socket.emit("error", "Internal server error");

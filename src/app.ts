@@ -25,6 +25,8 @@ app.get("/load", C.RoomController.load);
 app.get("/room/list", C.RoomController.index);
 app.post("/room/:name", C.RoomController.create);
 app.put("/room/:roomId", C.RoomController.update);
+app.put("/room/add-user/:roomId/:userId", C.RoomController.addUser);
+app.put("/room/remove-user/:roomId/:userId", C.RoomController.removeUser);
 app.delete("/room/:roomId", C.RoomController.delete);
 
 app.get("/messages/:roomId", C.MessageController.index);
