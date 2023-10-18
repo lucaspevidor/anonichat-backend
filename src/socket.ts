@@ -7,7 +7,7 @@ import { OnBegin } from "./controllers/socket-controller";
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*"
+    origin: "anonichat.lucaspevidor.com"
   }
 });
 
