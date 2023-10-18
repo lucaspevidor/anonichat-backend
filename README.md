@@ -23,7 +23,7 @@ These instructions will help you set up and run the backend locally for developm
 
    ```bash
    git clone https://github.com/lucaspevidor/anonichat-backend.git
-   cd anonymous-chat-backend
+   cd anonichat-backend
    ```
 
 1. Install the project dependencies:
