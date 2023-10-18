@@ -28,7 +28,7 @@ class SessionController {
       const { pwd_hash, ...userWithoutPwd } = user;
       const token = jwt.sign({ user: userWithoutPwd }, auth.secret, auth.options);
 
-      res.cookie("jwt", token, { maxAge: 604800000, sameSite: "lax" });
+      res.cookie("jwt", token, { maxAge: 604800000, sameSite: "none", secure: true, domain: ".lucaspevidor.com" });
       res.setHeader("Access-Control-Expose-Headers", "Set-Cookie");
 
       return res.json({ user: userWithoutPwd, token });

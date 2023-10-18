@@ -9,8 +9,8 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true
+  origin: "https://anonichat.lucaspevidor.com",
+  credentials: true,
 }));
 
 app.post("/user", C.UserController.create);
