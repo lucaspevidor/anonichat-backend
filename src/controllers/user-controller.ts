@@ -1,5 +1,6 @@
 import { type Request, type Response } from "express";
 import bcrypt from "bcrypt";
+import { io } from "../socket";
 
 import { db } from "../services/db";
 
@@ -9,7 +10,7 @@ interface IUserCreate {
 }
 
 class UserController {
-  async create (req: Request<any, IUserCreate>, res: Response) {
+  async create(req: Request<any, IUserCreate>, res: Response) {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -39,7 +40,7 @@ class UserController {
     }
   }
 
-  async delete (req: Request, res: Response) {
+  async delete(req: Request, res: Response) {
     try {
       const { id } = req.user;
 
@@ -48,6 +49,7 @@ class UserController {
 
       const promises = user.rooms.map(async room => {
         const newRoomMembers = room.memberIDs.filter(memberId => memberId !== user.id);
+        io.to(room.id).emit("user-removed", id, room);
         return await db.room.update({ where: { id: room.id }, data: { memberIDs: newRoomMembers } });
       });
 

@@ -23,7 +23,7 @@ class RoomController {
           memberIDs: [userId],
           ownerId: userId
         },
-        include: { messages: { take: 10 } }
+        include: { messages: { take: 200 } }
       });
 
       await db.user.update({
@@ -66,30 +66,66 @@ class RoomController {
     }
   }
 
-  async addUser(req: Request, res: Response) {
+  async read(req: Request, res: Response) {
     try {
-      const { roomId, userId } = req.params;
+      const { roomId } = req.params;
 
       if (!roomId) return res.status(400).json({ error: "Missing room ID" });
-      if (!userId) return res.status(400).json({ error: "Missing user ID" });
 
-      const room = await db.room.findUnique({ where: { id: roomId } });
+      const room = await db.room.findUnique({ where: { id: roomId }, include: { members: { select: { username: true, id: true } } } });
+      if (!room) return res.status(400).json({ error: "Room not found" });
+      if (!room.memberIDs.includes(req.user.id)) return res.status(401).json({ error: "Unauthorized" });
+
+      return res.json(room);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  async addUser(req: Request, res: Response) {
+    try {
+      const { roomId, username } = req.params;
+
+      if (!roomId) return res.status(400).json({ error: "Missing room ID" });
+      if (!username) return res.status(400).json({ error: "Missing username" });
+
+      const room = await db.room.findUnique({ where: { id: roomId }, include: { members: true } });
       if (!room) return res.status(400).json({ error: "Room not found" });
       if (room.ownerId !== req.user.id) return res.status(401).json({ error: "Unauthorized" });
-      if (room.memberIDs.includes(userId)) return res.status(400).json({ error: "User is already a member of the channel" });
+      if (room.members.find(m => m.username === username)) return res.status(400).json({ error: "User is already a member of the channel" });
 
-      const user = await db.user.findUnique({ where: { id: userId } });
+      const user = await db.user.findUnique({ where: { username } });
       if (!user) return res.status(400).json({ error: "User does not exist" });
 
       const updatedRoom = await db.room.update({
         where: { id: roomId },
         data: {
-          memberIDs: [...room.memberIDs, userId]
+          memberIDs: [...room.memberIDs, user.id]
+        },
+        include: {
+          messages: {
+            take: 200,
+            orderBy: {
+              createdAt: "desc"
+            }
+          }
         }
       });
 
-      io.to(userId).emit("room-inserted", updatedRoom);
-      io.to(roomId).emit("user-added", userId, updatedRoom);
+      const updatedUser = await db.user.update({
+        where: { id: user.id },
+        data: {
+          roomIDs: [...user.roomIDs, updatedRoom.id]
+        }
+      });
+
+      updatedRoom.messages = updatedRoom.messages.sort((a, b) =>
+        a.createdAt.getTime() - b.createdAt.getTime()
+      );
+
+      io.to(user.id).emit("room-inserted", updatedRoom);
+      io.to(roomId).emit("user-added", user.id, user.username, updatedRoom);
       return res.json(updatedRoom);
     } catch (error) {
       console.log(error);
@@ -106,9 +142,19 @@ class RoomController {
 
       const room = await db.room.findUnique({ where: { id: roomId } });
       if (!room) return res.status(400).json({ error: "Room not found" });
-      if (room.ownerId !== req.user.id) return res.status(401).json({ error: "Unauthorized" });
+      if (room.ownerId !== req.user.id && userId !== req.user.id) return res.status(401).json({ error: "Unauthorized" });
       if (!room.memberIDs.includes(userId)) return res.status(400).json({ error: "User is not a member of the channel" });
       if (room.ownerId === userId) return res.status(400).json({ error: "The owner of the room cannot be removed" });
+
+      const user = await db.user.findUnique({ where: { id: userId } });
+      if (!user) return res.status(400).json({ error: "User not found" });
+
+      await db.user.update({
+        where: { id: userId },
+        data: {
+          roomIDs: user.roomIDs.filter(r => r !== roomId)
+        }
+      });
 
       const updatedRoom = await db.room.update({
         where: { id: roomId },
@@ -155,9 +201,18 @@ class RoomController {
         },
         include: {
           messages: {
-            take: 20
+            take: 200,
+            orderBy: {
+              createdAt: "desc"
+            }
           }
         }
+      });
+
+      roomsWithMessages.forEach(r => {
+        r.messages = r.messages.sort((a, b) =>
+          a.createdAt.getTime() - b.createdAt.getTime()
+        );
       });
 
       return res.json(roomsWithMessages);

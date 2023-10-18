@@ -22,10 +22,11 @@ app.delete("/user", C.UserController.delete);
 
 app.get("/load", C.RoomController.load);
 
+app.get("/room/:roomId", C.RoomController.read);
 app.get("/room/list", C.RoomController.index);
 app.post("/room/:name", C.RoomController.create);
 app.put("/room/:roomId", C.RoomController.update);
-app.put("/room/add-user/:roomId/:userId", C.RoomController.addUser);
+app.put("/room/add-user/:roomId/:username", C.RoomController.addUser);
 app.put("/room/remove-user/:roomId/:userId", C.RoomController.removeUser);
 app.delete("/room/:roomId", C.RoomController.delete);
 

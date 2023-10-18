@@ -42,7 +42,8 @@ async function SubToRooms(
       socket.join(rId)?.catch(error => { throw new Error(error); });
     });
 
-    socket.on("room-inserted", (room) => {
+    socket.on("room-inserted-ack", (room) => {
+      console.log("Joining!");
       socket.join(room.id)?.catch(error => { throw new Error(error); });
     });
     console.log(`User ${id} is subbed to rooms`);
